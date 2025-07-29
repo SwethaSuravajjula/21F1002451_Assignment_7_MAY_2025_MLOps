@@ -62,7 +62,7 @@ jobs:
         echo "Applying Kubernetes manifests..."
         kubectl apply -f k8/service.yml
         kubectl apply -f k8/deployement.yml
-        kubectl apply -f k8/hpa.yaml
+        kubectl apply -f k8/hpa.yml
         echo "Manifests applied successfully."
 
     - name: Run smoke test on live endpoint
