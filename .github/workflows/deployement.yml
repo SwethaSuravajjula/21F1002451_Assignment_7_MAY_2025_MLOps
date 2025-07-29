@@ -11,7 +11,7 @@ env:
   REPO_NAME: repo
   IMAGE_NAME: iris-api
   CLUSTER_NAME: gke-cluster-iris
-  CLUSTER_ZONE: us-west1
+  CLUSTER_ZONE: us-west2
   DEPLOYMENT_NAME: iris-deployment
 
 jobs:
