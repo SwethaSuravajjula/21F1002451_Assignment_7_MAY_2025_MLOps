@@ -1,0 +1,20 @@
+# k8/hpa.yaml
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: iris-hpa
+spec:
+  scaleTargetRef:
+    apiVersion: apps/v1
+    kind: Deployment
+    name: iris-deployment # Must match your deployment's name
+  minReplicas: 2
+  maxReplicas: 10 # Let's allow it to scale up to 10 pods
+  metrics:
+  - type: Resource
+    resource:
+      name: cpu
+      target:
+        type: Utilization
+        # Target 50% CPU utilization before scaling up
+        averageUtilization: 50

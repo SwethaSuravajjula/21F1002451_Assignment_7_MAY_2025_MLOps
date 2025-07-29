@@ -1,0 +1,28 @@
+# k8/deployement.yml
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: iris-deployment
+  labels:
+    app: iris
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: iris
+  template:
+    metadata:
+      labels:
+        app: iris
+    spec:
+      containers:
+      - name: iris-api
+        image: IMAGE_PLACEHOLDER
+        ports:
+        - containerPort: 8100 # Corrected to match Dockerfile and main.py
+        # Added resource requests and limits for HPA
+        resources:
+          requests:
+            cpu: "250m" # Request 0.25 of a CPU core
+          limits:
+            cpu: "500m" # Limit to 0.5 of a CPU core
