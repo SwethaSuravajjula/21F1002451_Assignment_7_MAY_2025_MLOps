@@ -1,5 +1,4 @@
 name: Deploy to GKE
-
 on:
   push:
     branches:
@@ -7,17 +6,16 @@ on:
 
 env:
   PROJECT_ID: fourth-scheme-461516-n2
-  GAR_LOCATION: us-west1
+  GAR_LOCATION: us-west1 # This will also be used as the cluster region
   REPO_NAME: repo
   IMAGE_NAME: iris-api
   CLUSTER_NAME: gke-cluster-iris
-  CLUSTER_ZONE: us-west2
+  # CLUSTER_ZONE is no longer needed for regional Autopilot cluster
   DEPLOYMENT_NAME: iris-deployment
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
@@ -33,37 +31,50 @@ jobs:
         echo "$GCP_CREDENTIALS_B64" | base64 -d > gcp-key.json
         gcloud auth activate-service-account --key-file=gcp-key.json
         gcloud config set project ${{ env.PROJECT_ID }}
-        
+
+    # --- NEW STEP TO CREATE GKE CLUSTER ---
+    - name: Create GKE cluster if it doesn't exist
+      run: |
+        # First, check if the cluster already exists.
+        # The 'describe' command will fail if the cluster is not found.
+        # We suppress all output with >/dev/null 2>&1 to keep the logs clean.
+        if ! gcloud container clusters describe ${{ env.CLUSTER_NAME }} --region=${{ env.GAR_LOCATION }} >/dev/null 2>&1; then
+          echo "GKE cluster '${{ env.CLUSTER_NAME }}' not found. Creating it..."
+          # Creates a small, cost-effective Autopilot cluster.
+          # Autopilot is recommended for CI/CD to manage nodes automatically.
+          gcloud container clusters create-auto ${{ env.CLUSTER_NAME }} \
+            --region=${{ env.GAR_LOCATION }}
+        else
+          echo "GKE cluster '${{ env.CLUSTER_NAME }}' already exists."
+        fi
+
     - name: Configure Docker for Artifact Registry
       run: |
         gcloud auth configure-docker ${{ env.GAR_LOCATION }}-docker.pkg.dev
-        
+
     - name: Build and Tag Docker image
       run: |
         docker build -t ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest .
-        
+
     - name: Push Docker image to Artifact Registry
       run: |
         docker push ${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest
-        
+
     - name: Get GKE cluster credentials
       run: |
-        gcloud container clusters get-credentials ${{ env.CLUSTER_NAME }} --zone ${{ env.CLUSTER_ZONE }}
-        
+        # For Autopilot clusters, we use --region instead of --zone.
+        gcloud container clusters get-credentials ${{ env.CLUSTER_NAME }} --region ${{ env.GAR_LOCATION }}
+
     - name: Deploy to GKE
       run: |
         IMAGE_URL="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest"
         # Update the image placeholder in the deployment file
-        # Note: I've corrected the filename from 'deployement.yml' to 'deployment.yml'. Please ensure your file is named correctly.
-        sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_URL|g" k8/deployement.yml
+        # Note: Correcting the filename from 'deployement.yml' to 'deployment.yml'. Please ensure your file is named correctly.
+        sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_URL|g" k8/deployment.yml
         
-        # Apply all manifests explicitly for clarity and control.
-        # This will now apply the service, deployment, and the new HPA.
+        # Apply all manifest files in the k8s directory. This is cleaner and more scalable.
         echo "Applying Kubernetes manifests..."
-        kubectl apply -f k8/service.yml
-        kubectl apply -f k8/deployement.yml
-        kubectl apply -f k8/hpa.yml
-        echo "Manifests applied successfully."
+        kubectl apply -f k8/
 
     - name: Run smoke test on live endpoint
       run: |
