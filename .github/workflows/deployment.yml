@@ -70,7 +70,7 @@ jobs:
         IMAGE_URL="${{ env.GAR_LOCATION }}-docker.pkg.dev/${{ env.PROJECT_ID }}/${{ env.REPO_NAME }}/${{ env.IMAGE_NAME }}:latest"
         # Update the image placeholder in the deployment file
         # Note: Correcting the filename from 'deployement.yml' to 'deployment.yml'. Please ensure your file is named correctly.
-        sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_URL|g" k8/deployment.yml
+        sed -i "s|IMAGE_PLACEHOLDER|$IMAGE_URL|g" k8/deployement.yml
         
         # Apply all manifest files in the k8s directory. This is cleaner and more scalable.
         echo "Applying Kubernetes manifests..."
